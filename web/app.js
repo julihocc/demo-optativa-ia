@@ -1,52 +1,57 @@
 import { forward, loadModel, createBars, setupCanvas } from './common.js';
+import { createGame } from './game.js';
 
 const canvas = document.getElementById('canvas');
 let layers = null;
+let game = null;
 
 const bars = createBars(document.getElementById('bars'));
-bars.build(Array.from({ length: 10 }, (_, d) => `<span class="digit">${d}</span>`));
 
-const { ctx } = setupCanvas(canvas, { lineWidth: 22, onClear: () => bars.show(null), onChange: predict });
+// --- Dibujo (se guardan los trazos para volver a dibujarlos a 28x28) ---
+let strokes = [];
+const { clear } = setupCanvas(canvas, {
+  lineWidth: 8,
+  onStrokeStart: (x, y) => strokes.push([[x, y]]),
+  onStrokePoint: (x, y) => strokes[strokes.length - 1].push([x, y]),
+  onClear: () => { strokes = []; bars.show(null); },
+  onChange: predict,
+});
 
-// --- Preprocesado estilo MNIST: recortar, escalar a 20x20 y centrar por centro de masa en 28x28 ---
+// --- Preprocesado estilo Quick, Draw!: el lado mayor ocupa ~26 px, centrado por caja, trazo de 1.5 px ---
 function preprocess() {
-  const { data } = ctx.getImageData(0, 0, canvas.width, canvas.height);
-  const W = canvas.width, H = canvas.height;
-  let minX = W, minY = H, maxX = -1, maxY = -1;
-  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
-    if (data[(y * W + x) * 4] > 20) {
-      if (x < minX) minX = x; if (x > maxX) maxX = x;
-      if (y < minY) minY = y; if (y > maxY) maxY = y;
-    }
-  }
-  if (maxX < 0) return null;
-  const bw = maxX - minX + 1, bh = maxY - minY + 1;
-  const scale = 20 / Math.max(bw, bh);
-  const tw = Math.max(1, Math.round(bw * scale)), th = Math.max(1, Math.round(bh * scale));
+  const pts = strokes.flat();
+  if (!pts.length) return null;
+  const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
+  const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
+  const scale = 24 / Math.max(maxX - minX, maxY - minY, 1);
+  const ox = 14 - (minX + maxX) / 2 * scale, oy = 14 - (minY + maxY) / 2 * scale;
   const tmp = document.createElement('canvas'); tmp.width = tmp.height = 28;
   const t = tmp.getContext('2d');
   t.fillStyle = '#000'; t.fillRect(0, 0, 28, 28);
-  t.imageSmoothingQuality = 'high';
-  t.drawImage(canvas, minX, minY, bw, bh, Math.round((28 - tw) / 2), Math.round((28 - th) / 2), tw, th);
-  // centro de masa -> desplazar al centro
-  let img = t.getImageData(0, 0, 28, 28).data;
-  let m = 0, cx = 0, cy = 0;
-  for (let y = 0; y < 28; y++) for (let x = 0; x < 28; x++) {
-    const v = img[(y * 28 + x) * 4]; m += v; cx += v * x; cy += v * y;
-  }
-  const dx = Math.round(14 - cx / m), dy = Math.round(14 - cy / m);
+  t.lineWidth = 1.5; t.lineCap = 'round'; t.lineJoin = 'round'; t.strokeStyle = '#fff';
+  strokes.forEach(s => {
+    t.beginPath();
+    s.forEach(([x, y], i) => (i ? t.lineTo : t.moveTo).call(t, x * scale + ox, y * scale + oy));
+    if (s.length === 1) t.lineTo(s[0][0] * scale + ox + 0.01, s[0][1] * scale + oy);
+    t.stroke();
+  });
+  const img = t.getImageData(0, 0, 28, 28).data;
   const out = new Float32Array(784);
-  for (let y = 0; y < 28; y++) for (let x = 0; x < 28; x++) {
-    const sx = x - dx, sy = y - dy;
-    if (sx >= 0 && sx < 28 && sy >= 0 && sy < 28) out[y * 28 + x] = img[(sy * 28 + sx) * 4] / 255;
-  }
+  for (let i = 0; i < 784; i++) out[i] = img[i * 4] / 255;
   return out;
 }
 
 function predict() {
   if (!layers) return;
   const x = preprocess();
-  bars.show(x ? forward(layers, x) : null);
+  const p = x ? forward(layers, x) : null;
+  bars.show(p);
+  if (p) game?.check(p);
 }
 
-loadModel('model/weights.json').then(j => { if (j) layers = j.layers; });
+loadModel('model/weights.json').then(j => {
+  if (!j) return;
+  bars.build(j.labels.map(({ emoji, nombre }) => `<span class="label"><span class="emoji">${emoji}</span><span class="name">${nombre}</span></span>`));
+  layers = j.layers;
+  game = createGame({ labels: j.labels, clear });
+});

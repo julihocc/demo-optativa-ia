@@ -1,4 +1,4 @@
-// Codigo compartido por los reconocedores de digitos y emojis (modulo ES).
+// Inferencia, carga del modelo, barras de probabilidad y lienzo de dibujo (modulo ES).
 
 // --- Inferencia: MLP (ReLU) + softmax ---
 export function forward(layers, x) {

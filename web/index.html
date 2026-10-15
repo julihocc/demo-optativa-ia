@@ -2,20 +2,31 @@
 <html lang="es">
 <head>
   <meta charset="utf-8">
-  <title>Reconocedor de dígitos</title>
+  <title>Dibuja el emoji</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <main>
     <section class="draw">
-      <h1>Dibuja un dígito</h1>
+      <div class="hud">
+        <span title="Tiempo">⏱️ <b id="time">60</b>s</span>
+        <span title="Puntos">⭐ <b id="score">0</b></span>
+        <span title="Récord">🏆 <b id="best">0</b></span>
+        <span title="Nivel">🎚️ <b id="level">1</b>/3</span>
+      </div>
+      <div class="timer"><div id="time-fill"></div></div>
+      <div id="target" class="target">🎨</div>
       <canvas id="canvas" width="280" height="280"></canvas>
-      <button id="clear">Borrar</button>
-      <a href="emoji/">Probar el reconocedor de emojis →</a>
+      <div class="buttons">
+        <button id="clear">🧹 Borrar</button>
+        <button id="skip" disabled>⏭️ Saltar</button>
+        <button id="play" disabled>▶️ Jugar</button>
+      </div>
+      <div id="msg" class="msg">Dibuja tantos emojis como puedas en 1 minuto.</div>
     </section>
     <aside>
-      <h2>Probabilidades</h2>
+      <h2>🤖 Lo que ve la red</h2>
       <ul id="bars"></ul>
     </aside>
   </main>

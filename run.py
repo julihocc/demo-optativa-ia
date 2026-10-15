@@ -1,7 +1,7 @@
-"""Arranca el proyecto completo: entrena lo que falte, sirve web/ y abre el navegador.
+"""Arranca el juego: entrena el modelo si falta, sirve web/ y abre el navegador.
 
-    python run.py                # usa los pesos existentes, entrena solo los que falten
-    python run.py --train        # reentrena todos los modelos
+    python run.py                # usa los pesos existentes, entrena solo si faltan
+    python run.py --train        # reentrena el modelo
     python run.py --port 9000 --no-browser
 """
 import argparse
@@ -18,8 +18,7 @@ WEB = ROOT / "web"
 
 # (nombre, script de entrenamiento, pesos que genera, ruta en la web)
 MODELS = [
-    ("digitos", ROOT / "train" / "train.py", WEB / "model" / "weights.json", "/"),
-    ("emojis", ROOT / "train" / "train_emoji.py", WEB / "emoji" / "model" / "weights.json", "/emoji/"),
+    ("emojis", ROOT / "train" / "train.py", WEB / "model" / "weights.json", "/"),
 ]
 
 
