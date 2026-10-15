@@ -54,7 +54,7 @@ canvas.addEventListener('pointermove', e => {
 ['pointerup', 'pointercancel'].forEach(t => canvas.addEventListener(t, () => { drawing = false; }));
 document.getElementById('clear').addEventListener('click', clearCanvas);
 
-// --- Preprocesado estilo Quick, Draw!: el lado mayor ocupa ~26 px, centrado por caja, trazo de ~2 px ---
+// --- Preprocesado estilo Quick, Draw!: el lado mayor ocupa ~26 px, centrado por caja, trazo de 1.5 px ---
 function preprocess() {
   const pts = strokes.flat();
   if (!pts.length) return null;
@@ -65,7 +65,7 @@ function preprocess() {
   const tmp = document.createElement('canvas'); tmp.width = tmp.height = 28;
   const t = tmp.getContext('2d');
   t.fillStyle = '#000'; t.fillRect(0, 0, 28, 28);
-  t.lineWidth = 2; t.lineCap = 'round'; t.lineJoin = 'round'; t.strokeStyle = '#fff';
+  t.lineWidth = 1.5; t.lineCap = 'round'; t.lineJoin = 'round'; t.strokeStyle = '#fff';
   strokes.forEach(s => {
     t.beginPath();
     s.forEach(([x, y], i) => (i ? t.lineTo : t.moveTo).call(t, x * scale + ox, y * scale + oy));
