@@ -1,12 +1,10 @@
 """Entrena un MLP sobre dibujos de Quick, Draw! y exporta los pesos a web/emoji/model/weights.json."""
-import json
 import urllib.parse
 import urllib.request
-from pathlib import Path
 
 import numpy as np
-from sklearn.model_selection import train_test_split
-from sklearn.neural_network import MLPClassifier
+
+from common import ROOT, fit_and_export
 
 # (categoria de Quick, Draw!, emoji, nombre)
 CATEGORIES = [
@@ -23,7 +21,6 @@ CATEGORIES = [
 ]
 N = 10000  # dibujos por categoria
 URL = "https://storage.googleapis.com/quickdraw_dataset/full/numpy_bitmap/{}.npy"
-ROOT = Path(__file__).resolve().parent.parent
 CACHE = ROOT / "data" / "quickdraw"
 
 
@@ -52,18 +49,5 @@ def load(cat):
 if __name__ == "__main__":
     X = np.concatenate([load(c) for c, _, _ in CATEGORIES]).astype(np.float32) / 255.0
     y = np.repeat(np.arange(len(CATEGORIES)), N)
-    Xtr, Xte, ytr, yte = train_test_split(X, y, test_size=0.1, random_state=0)
-
-    clf = MLPClassifier(hidden_layer_sizes=(128, 64), max_iter=30, random_state=0, verbose=True)
-    clf.fit(Xtr, ytr)
-    print(f"Precision en test: {clf.score(Xte, yte):.4f}")
-
-    out = ROOT / "web" / "emoji" / "model" / "weights.json"
-    out.parent.mkdir(parents=True, exist_ok=True)
-    layers = [
-        {"W": np.round(W, 5).tolist(), "b": np.round(b, 5).tolist()}
-        for W, b in zip(clf.coefs_, clf.intercepts_)
-    ]
     labels = [{"emoji": e, "nombre": n} for _, e, n in CATEGORIES]
-    out.write_text(json.dumps({"labels": labels, "layers": layers}, ensure_ascii=False), encoding="utf-8")
-    print("Pesos exportados en", out)
+    fit_and_export(X, y, ROOT / "web" / "emoji" / "model" / "weights.json", test_size=0.1, labels=labels)

@@ -1,52 +1,12 @@
+import { forward, loadModel, createBars, setupCanvas } from './common.js';
+
 const canvas = document.getElementById('canvas');
-const ctx = canvas.getContext('2d');
-const bars = document.getElementById('bars');
 let layers = null;
 
-// --- UI de la barra lateral ---
-const rows = [];
-for (let d = 0; d < 10; d++) {
-  const li = document.createElement('li');
-  li.innerHTML = `<span class="digit">${d}</span><div class="track"><div class="fill"></div></div><span class="pct">0.0%</span>`;
-  bars.appendChild(li);
-  rows.push({ li, fill: li.querySelector('.fill'), pct: li.querySelector('.pct') });
-}
-function showProbs(p) {
-  const best = p ? p.indexOf(Math.max(...p)) : -1;
-  rows.forEach((r, i) => {
-    const v = p ? p[i] : 0;
-    r.fill.style.width = (v * 100) + '%';
-    r.pct.textContent = (v * 100).toFixed(1) + '%';
-    r.li.classList.toggle('top', i === best);
-  });
-}
+const bars = createBars(document.getElementById('bars'));
+bars.build(Array.from({ length: 10 }, (_, d) => `<span class="digit">${d}</span>`));
 
-// --- Dibujo ---
-function clearCanvas() {
-  ctx.fillStyle = '#000';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  showProbs(null);
-}
-ctx.lineWidth = 22; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = '#fff';
-let drawing = false;
-function pos(e) {
-  const r = canvas.getBoundingClientRect();
-  return [(e.clientX - r.left) * canvas.width / r.width, (e.clientY - r.top) * canvas.height / r.height];
-}
-canvas.addEventListener('pointerdown', e => {
-  drawing = true; canvas.setPointerCapture(e.pointerId);
-  const [x, y] = pos(e);
-  ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + 0.01, y); ctx.stroke();
-  predict();
-});
-canvas.addEventListener('pointermove', e => {
-  if (!drawing) return;
-  const [x, y] = pos(e);
-  ctx.lineTo(x, y); ctx.stroke(); ctx.beginPath(); ctx.moveTo(x, y);
-  predict();
-});
-['pointerup', 'pointercancel'].forEach(t => canvas.addEventListener(t, () => { drawing = false; }));
-document.getElementById('clear').addEventListener('click', clearCanvas);
+const { ctx } = setupCanvas(canvas, { lineWidth: 22, onClear: () => bars.show(null), onChange: predict });
 
 // --- Preprocesado estilo MNIST: recortar, escalar a 20x20 y centrar por centro de masa en 28x28 ---
 function preprocess() {
@@ -83,31 +43,10 @@ function preprocess() {
   return out;
 }
 
-// --- Inferencia: MLP (ReLU) + softmax ---
-function forward(x) {
-  let a = x;
-  layers.forEach((L, li) => {
-    const n = L.b.length, z = new Float32Array(n);
-    for (let j = 0; j < n; j++) z[j] = L.b[j];
-    for (let i = 0; i < a.length; i++) {
-      const ai = a[i]; if (ai === 0) continue;
-      const w = L.W[i];
-      for (let j = 0; j < n; j++) z[j] += ai * w[j];
-    }
-    if (li < layers.length - 1) for (let j = 0; j < n; j++) z[j] = Math.max(0, z[j]);
-    a = z;
-  });
-  const mx = Math.max(...a);
-  const e = Array.from(a, v => Math.exp(v - mx));
-  const s = e.reduce((p, c) => p + c, 0);
-  return e.map(v => v / s);
-}
 function predict() {
   if (!layers) return;
   const x = preprocess();
-  showProbs(x ? forward(x) : null);
+  bars.show(x ? forward(layers, x) : null);
 }
 
-clearCanvas();
-fetch('model/weights.json').then(r => r.json()).then(j => { layers = j.layers; })
-  .catch(() => { document.querySelector('aside').insertAdjacentHTML('beforeend', '<p>No se pudo cargar model/weights.json (¿sirves la carpeta web por HTTP?)</p>'); });
+loadModel('model/weights.json').then(j => { if (j) layers = j.layers; });
