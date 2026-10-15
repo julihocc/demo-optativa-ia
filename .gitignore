@@ -122,3 +122,6 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Datos descargados (Quick, Draw!)
+data/
